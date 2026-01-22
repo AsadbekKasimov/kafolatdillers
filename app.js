@@ -1,255 +1,26 @@
-// ========== КОНФИГУРАЦИЯ ==========
-// ВАЖНО: Замените этот URL на ваш URL из Google Apps Script
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZzxeatuuDw4eiT5BFyH2VP35U-rIbqdTw3vDvBmcy8tujjVGmnmYuLLiKaGNnDchw/exec';
-
-// ========== ПРОВЕРКА ДОСТУПА ==========
-let dealerInfo = null;
-let isAuthorized = false;
-
 // Telegram WebApp initialization
 const tg = window.Telegram.WebApp;
 tg.expand();
 
-// ОТЛАДКА: Показать информацию о Telegram WebApp
-console.log('=== TELEGRAM WEBAPP DEBUG ===');
-console.log('tg:', tg);
-console.log('tg.initData:', tg.initData);
-console.log('tg.initDataUnsafe:', tg.initDataUnsafe);
-console.log('tg.initDataUnsafe?.user:', tg.initDataUnsafe?.user);
-console.log('tg.initDataUnsafe?.user?.id:', tg.initDataUnsafe?.user?.id);
-console.log('===========================');
 
-// Проверка доступа при загрузке страницы
-async function checkAccess() {
-    try {
-        // МЕТОД 1: Получаем chat_id из Telegram WebApp (основной)
-        let chatId = tg.initDataUnsafe?.user?.id;
-        
-        // МЕТОД 2: Альтернативный способ (если первый не сработал)
-        if (!chatId && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            chatId = tg.initDataUnsafe.user.id;
-        }
-        
-        // МЕТОД 3: Проверяем объект Telegram.WebApp напрямую
-        if (!chatId && window.Telegram && window.Telegram.WebApp) {
-            const webapp = window.Telegram.WebApp;
-            if (webapp.initDataUnsafe && webapp.initDataUnsafe.user) {
-                chatId = webapp.initDataUnsafe.user.id;
-            }
-        }
-        
-        // ОТЛАДКА: Показываем что получили
-        console.log('Extracted chatId:', chatId);
-        
-        if (!chatId) {
-            // Показываем детальную информацию об ошибке
-            const debugInfo = `
-                initData: ${tg.initData ? 'есть' : 'нет'}
-                initDataUnsafe: ${tg.initDataUnsafe ? JSON.stringify(tg.initDataUnsafe) : 'нет'}
-            `;
-            console.error('Не удалось получить chat_id. Debug info:', debugInfo);
-            
-            showAccessDenied(
-                'Не удалось получить ваш ID. Убедитесь, что вы открыли приложение через кнопку "🛒 Сделать заказ" в боте.'
-            );
-            return false;
-        }
-        
-        // Показываем индикатор загрузки
-        showLoadingScreen();
-        
-        // Проверяем, настроен ли Google Script URL
-        if (GOOGLE_SCRIPT_URL === 'ВАШ_URL_ИЗ_GOOGLE_APPS_SCRIPT') {
-            showAccessDenied(
-                'Система авторизации не настроена. Обратитесь к администратору.'
-            );
-            return false;
-        }
-        
-        // Проверяем доступ через Google Sheets
-        console.log('Отправка запроса к Google Sheets:', `${GOOGLE_SCRIPT_URL}?chat_id=${chatId}`);
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?chat_id=${chatId}`);
-        
-        console.log('Статус ответа:', response.status);
-        const result = await response.json();
-        console.log('Результат проверки:', result);
-        
-        if (result.success) {
-            // Доступ разрешен
-            dealerInfo = result.data;
-            isAuthorized = true;
-            console.log('✅ Доступ разрешен. Информация о диллере:', dealerInfo);
-            hideLoadingScreen();
-            initializeApp();
-            return true;
-        } else {
-            // Доступ запрещен
-            console.log('❌ Доступ запрещен:', result.message);
-            showAccessDenied();
-            return false;
-        }
-        
-    } catch (error) {
-        console.error('❌ Ошибка проверки доступа:', error);
-        showAccessDenied('Произошла ошибка при проверке доступа. Попробуйте позже. Ошибка: ' + error.message);
-        return false;
-    }
-}
 
-// Показать экран "Доступ запрещен"
-function showAccessDenied(customMessage = null) {
-    document.body.innerHTML = `
-        <div style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-            text-align: center;
-            background: #F5F5F7;
-        ">
-            <div style="
-                background: white;
-                border-radius: 20px;
-                padding: 40px 30px;
-                max-width: 400px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            ">
-                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" stroke-width="2" style="margin-bottom: 20px;">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="15" y1="9" x2="9" y2="15"></line>
-                    <line x1="9" y1="9" x2="15" y2="15"></line>
-                </svg>
-                
-                <h2 style="
-                    font-size: 24px;
-                    font-weight: 600;
-                    color: #1C1C1E;
-                    margin-bottom: 15px;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                ">Доступ запрещен</h2>
-                
-                <p style="
-                    font-size: 16px;
-                    color: #8E8E93;
-                    line-height: 1.5;
-                    margin-bottom: 25px;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                ">
-                    ${customMessage || 'У вас нет доступа к каталогу. Для получения доступа свяжитесь с администратором.'}
-                </p>
-                
-                <a href="https://t.me/khaja_01" style="
-                    display: inline-block;
-                    background: #FF3B30;
-                    color: white;
-                    padding: 14px 30px;
-                    border-radius: 12px;
-                    text-decoration: none;
-                    font-weight: 600;
-                    font-size: 16px;
-                    transition: background 0.2s;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                " onmouseover="this.style.background='#E62E24'" onmouseout="this.style.background='#FF3B30'">
-                    Написать администратору
-                </a>
-                
-                <div style="
-                    margin-top: 20px;
-                    padding: 15px;
-                    background: #f8f8f8;
-                    border-radius: 10px;
-                    font-size: 12px;
-                    color: #666;
-                    text-align: left;
-                    font-family: monospace;
-                ">
-                    <strong>Отладочная информация:</strong><br>
-                    Chat ID: ${tg.initDataUnsafe?.user?.id || 'не определен'}<br>
-                    Username: ${tg.initDataUnsafe?.user?.username || 'не указан'}<br>
-                    First name: ${tg.initDataUnsafe?.user?.first_name || 'не указано'}<br>
-                    <br>
-                    <small>Отправьте эту информацию администратору если проблема сохраняется.</small>
-                </div>
-            </div>
-        </div>
-    `;
-}
+const productsData = {
+    cleaning: [
+        { id: 10001, name: "Жидкое средство для стирки Aroma 3.15 l * 4 шт", category: "cleaning", price: 180000, 
+	images:["https://asadbekkasimov.github.io/order/images/c1.jpg",
+		"https://asadbekkasimov.github.io/order/images/c1_2.jpg",
+		"https://asadbekkasimov.github.io/order/images/c1_3.jpg"], 
+	description: "Жидкое средство для стирки Aroma 3.15l * 4 шт" },
 
-// Показать экран загрузки
-function showLoadingScreen() {
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'loading-screen';
-    loadingDiv.innerHTML = `
-        <div style="
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: #F5F5F7;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        ">
-            <div style="
-                width: 50px;
-                height: 50px;
-                border: 4px solid #E5E5EA;
-                border-top-color: #FF3B30;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            "></div>
-            <p style="
-                margin-top: 20px;
-                color: #8E8E93;
-                font-size: 16px;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            ">Проверка доступа...</p>
-        </div>
-        <style>
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
-        </style>
-    `;
-    document.body.appendChild(loadingDiv);
-}
-
-// Скрыть экран загрузки
-function hideLoadingScreen() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-        loadingScreen.remove();
-    }
-}
-
-// Инициализация приложения после успешной авторизации
-function initializeApp() {
-    // Обновляем профиль с информацией о диллере
-    if (dealerInfo) {
-        document.getElementById('user-name').textContent = dealerInfo.name || 'Не указано';
-        document.getElementById('user-phone').textContent = dealerInfo.tel_number || 'Не указано';
-        document.getElementById('user-city').textContent = dealerInfo.region || 'Не указано';
-    }
-    
-    // Запускаем основное приложение
-    loadProducts();
-}
-
-// Запуск проверки доступа при загрузке страницы
-window.addEventListener('DOMContentLoaded', () => {
-    // Даем время Telegram WebApp инициализироваться
-    setTimeout(() => {
-        checkAccess();
-    }, 100);
-});
-
-// ========== ОСТАЛЬНОЙ КОД ПРИЛОЖЕНИЯ (БЕЗ ИЗМЕНЕНИЙ) ==========
-// ... (весь код от строки 200 до конца остается как в оригинале)
+        { id: 10002, name: "Кондиционер для белья 1440 ml * 8 шт", category: "cleaning", price: 211000, image: "https://asadbekkasimov.github.io/order/images/c2.jpg", description: "Кондиционер для белья 1440 ml * 8 шт " },
+        { id: 10003, name: "Гель густой 1 kg * 12 шт", category: "cleaning", price: 150000, image: "https://asadbekkasimov.github.io/order/images/c3.jpg", description: "Гель густой 1 kg * 12 шт" },
+        { id: 10004, name: "Жидкое средство для стирки Kafolat 1 l * 6 шт", category: "cleaning", price: 105600, image: "https://asadbekkasimov.github.io/order/images/c4.jpg", description: "Жидкое средство для стирки Kafolat 1 l * 6 шт" },
+        { id: 10005, name: "Антижир Kafolat 500 ml * 12 шт", category: "cleaning", price: 112200, image: "https://asadbekkasimov.github.io/order/images/c5.jpg", description: "Антижир Kafolat 500 ml * 12 шт" },
+        { id: 10006, name: "Шампунь Nalan 400 ml * 16 шт", category: "cleaning", price: 105600, image: "https://asadbekkasimov.github.io/order/images/c6.jpg", description: "Шампунь Nalan 400 ml * 16 шт" },
+        { id: 10007, name: "Освежитель воздуха 400 mk * 18 шт", category: "cleaning", price: 135000, image: "https://asadbekkasimov.github.io/order/images/c7.jpg", description: "Освежитель воздуха 400 мл * 18 шт" },
+        { id: 10008, name: "Средство для мыть стекол 575 ml * 16 шт", category: "cleaning", price: 70400, image: "https://asadbekkasimov.github.io/order/images/c8.jpg", description: "Средство для мыть стекол 575 ml * 16 шт" },
+        { id: 10009, name: "Жидкое мыло 500 мл * 8 шт", category: "cleaning", price: 40000, image: "https://asadbekkasimov.github.io/order/images/c9.jpg", description: "Жидкое мыло 500 мл * 8 шт" },
+        { id: 10010, name: "Кислородный очиститель 300 g * 12 шт", category: "cleaning", price: 144000, image: "https://asadbekkasimov.github.io/order/images/c10.jpg", description: "Кислородный очиститель 300 g * 12 шт" },
         { id: 10011, name: "Средство для ручной стирки Хоз.мыло 5кг * 1 шт", category: "cleaning", price: 30000, image: "https://asadbekkasimov.github.io/order/images/c11.jpg", description: "Средство для ручной стирки Хоз.мыло" }
     ],
     plasticpe: [
@@ -317,241 +88,319 @@ window.addEventListener('DOMContentLoaded', () => {
         { id: 70002, name: "Отдушка Цитрус", category: "fragrances", price: 32000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Свежий цитрусовый аромат" },
         { id: 70003, name: "Отдушка Роза", category: "fragrances", price: 38000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Нежный аромат розы" },
         { id: 70004, name: "Отдушка Морской бриз", category: "fragrances", price: 34000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Свежий морской аромат" },
-        { id: 70005, name: "Отдушка Ваниль", category: "fragrances", price: 36000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Сладкий ванильный аромат" }
+        { id: 70005, name: "Отдушка Ваниль", category: "fragrances", price: 36000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Сладкий ванильный аромат" },
+        { id: 70006, name: "Отдушка Яблоко", category: "fragrances", price: 30000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Свежий яблочный аромат" },
+        { id: 70007, name: "Отдушка Кокос", category: "fragrances", price: 37000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Экзотический кокосовый аромат" },
+        { id: 70008, name: "Отдушка Жасмин", category: "fragrances", price: 39000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Изысканный аромат жасмина" },
+        { id: 70009, name: "Отдушка Мята", category: "fragrances", price: 31000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Освежающий мятный аромат" },
+        { id: 70010, name: "Отдушка Сандал", category: "fragrances", price: 40000, image: "https://asadbekkasimov.github.io/order/images/fs.png", description: "Древесный аромат сандала" }
     ]
 };
 
-// State
-let currentCategory = 'all';
-let currentPage = 'catalog';
-let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
-let selectedProduct = null;
+// Flatten all products for easier access
+const allProducts = Object.values(productsData).flat();
 
-// Load products
+
+// State Management
+let currentCategory = 'all';
+let cart = JSON.parse(localStorage.getItem('cart')) || [];
+let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+let currentProduct = null;
+
+// Initialize App
+document.addEventListener('DOMContentLoaded', () => {
+    loadProducts();
+    setupEventListeners();
+    updateCartBadge();
+    loadUserProfile();
+});
+
+// Event Listeners
+function setupEventListeners() {
+    // Navigation
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const page = btn.dataset.page;
+            switchPage(page);
+        });
+    });
+
+    // Category Buttons
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentCategory = btn.dataset.category;
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadProducts();
+        });
+    });
+
+    // Search
+    document.getElementById('search-input').addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        filterProducts(query);
+    });
+
+    // Modal
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('product-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'product-modal') closeModal();
+    });
+
+    // Quantity Controls
+    document.getElementById('qty-minus').addEventListener('click', () => {
+    const input = document.getElementById('qty-input');
+    let val = parseInt(input.value, 10) || 1;
+    if (val > 1) input.value = val - 1;
+});
+
+document.getElementById('qty-plus').addEventListener('click', () => {
+    const input = document.getElementById('qty-input');
+    let val = parseInt(input.value, 10) || 1;
+    input.value = val + 1;
+});
+
+
+    // Add to Cart from Modal
+    document.getElementById('modal-add-to-cart').addEventListener('click', addToCartFromModal);
+
+    // Checkout
+    document.getElementById('checkout-btn').addEventListener('click', checkout);
+
+
+
+}
+
+// Page Switching
+function switchPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    
+    document.getElementById(`${page}-page`).classList.add('active');
+    document.querySelector(`[data-page="${page}"]`).classList.add('active');
+    
+    if (page === 'favorites') {
+        loadFavorites();
+    } else if (page === 'cart') {
+        renderCart();
+    } else if (page === 'profile') {
+        loadUserOrders();
+    }
+}
+
+// Products
 function loadProducts() {
     const grid = document.getElementById('products-grid');
     grid.innerHTML = '';
     
-    let products = [];
-    if (currentCategory === 'all') {
-        products = Object.values(productsData).flat();
-    } else {
-        products = productsData[currentCategory] || [];
-    }
-    
+    let products =
+        currentCategory === 'all'
+            ? allProducts
+            : productsData[currentCategory] || [];
+
     products.forEach(product => {
+        grid.appendChild(createProductCard(product));
+    });
+}
+
+
+function createProductCard(product) {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    
+    const isFavorite = favorites.includes(product.id);
+    
+const images = product.images || [product.image];
+
+    card.innerHTML = `
+        <button class="favorite-btn ${isFavorite ? 'active' : ''}" data-id="${product.id}">
+            <svg viewBox="0 0 24 24" fill="${isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+        </button>
+
+    <div class="slider" data-index="0">
+    <div class="slides">
+        ${images.map(img => `
+            <img src="${img}" class="slide">
+        `).join('')}
+    </div>
+    <div class="dots">
+        ${images.map((_, i) => `
+            <span class="dot ${i === 0 ? 'active' : ''}"></span>
+        `).join('')}
+    </div>
+</div>
+
+        <div class="product-name">${product.name}</div>
+        <div class="product-price">${formatPrice(product.price)}</div>
+        <button class="product-add-btn">Добавить</button>
+    `;
+    
+    card.querySelector('.product-add-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        addToCart(product);
+    });
+    
+    card.querySelector('.favorite-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFavorite(product.id);
+    });
+    
+    card.addEventListener('click', () => {
+        openModal(product);
+    });
+    
+    return card;
+}
+
+function filterProducts(query) {
+    const grid = document.getElementById('products-grid');
+    grid.innerHTML = '';
+    
+    let products = currentCategory === 'all' 
+        ? allProducts 
+        : productsData[currentCategory];
+    
+    const filtered = products.filter(p => 
+        p.name.toLowerCase().includes(query) || 
+        p.description.toLowerCase().includes(query)
+    );
+    
+    filtered.forEach(product => {
         const card = createProductCard(product);
         grid.appendChild(card);
     });
 }
 
-// Create product card
-function createProductCard(product) {
-    const card = document.createElement('div');
-    card.className = 'product-card';
+// Modal
+function openModal(product) {
+    currentProduct = product;
     
-    const isFavorite = favorites.some(f => f.id === product.id);
-    
-	// использовать первую картинку или fallback
-	const img = product.images?.[0] || product.image || '';
+const images = product.images || [product.image];
 
-    card.innerHTML = `
-        <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="toggleFavorite(event, ${product.id})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-        </button>
-        <img src="${img}" alt="${product.name}" class="product-image" onerror="this.src='https://via.placeholder.com/200?text=No+Image'">
-        <div class="product-name">${product.name}</div>
-        <div class="product-price">${formatPrice(product.price)}</div>
-        <button class="product-add-btn" onclick="openProductModal(event, ${product.id})">Подробнее</button>
-    `;
-    
-    return card;
-}
+const slides = document.getElementById('modal-slides');
+const dots = document.getElementById('modal-dots');
 
-// Toggle favorite
-function toggleFavorite(event, productId) {
-    event.stopPropagation();
-    
-    const index = favorites.findIndex(f => f.id === productId);
-    const btn = event.currentTarget;
-    
-    if (index > -1) {
-        favorites.splice(index, 1);
-        btn.classList.remove('active');
-    } else {
-        const product = findProduct(productId);
-        if (product) {
-            favorites.push(product);
-            btn.classList.add('active');
-        }
-    }
-    
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-    
-    if (currentPage === 'favorites') {
-        loadFavorites();
-    }
-}
+slides.innerHTML = images.map(img => `
+    <img src="${img}" class="slide zoomable">
+`).join('');
 
-// Find product by ID
-function findProduct(id) {
-    for (let category in productsData) {
-        const product = productsData[category].find(p => p.id === id);
-        if (product) return product;
-    }
-    return null;
-}
+dots.innerHTML = images.map((_, i) => `
+    <span class="dot ${i === 0 ? 'active' : ''}"></span>
+`).join('');
 
-// Open product modal
-function openProductModal(event, productId) {
-    event.stopPropagation();
-    
-    const product = findProduct(productId);
-    if (!product) return;
-    
-    selectedProduct = product;
-    
-    const modal = document.getElementById('product-modal');
-    
-	// slider images
-	const images = product.images || [product.image || ''];
-	const slides = document.getElementById('modal-slides');
-	const dots = document.getElementById('modal-dots');
-
-	slides.innerHTML = images.map(img => 
-	  `<img src="${img}" class="slide zoomable" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">`
-	).join('');
-
-	dots.innerHTML = images.map((_, i) => 
-	  `<span class="dot ${i === 0 ? 'active' : ''}"></span>`
-	).join('');
-
-	document.getElementById('modal-slider').dataset.index = '0';
+document.getElementById('modal-slider').dataset.index = 0;
+slides.style.transform = 'translateX(0)';
 
     document.getElementById('modal-title').textContent = product.name;
     document.getElementById('modal-description').textContent = product.description;
     document.getElementById('modal-price').textContent = formatPrice(product.price);
     document.getElementById('qty-input').value = 1;
-    
-    modal.classList.remove('hidden');
+
+	const qtyInput = document.getElementById('qty-input');
+
+// защита от букв, 0, -, e
+qtyInput.oninput = () => {
+    let val = parseInt(qtyInput.value, 10);
+    if (isNaN(val) || val < 1) qtyInput.value = 1;
+    else qtyInput.value = val;
+};
+
+	
+	document.getElementById('product-modal').classList.remove('hidden');
+
+
 }
 
-// Close modal
-document.getElementById('modal-close').addEventListener('click', () => {
+function closeModal() {
     document.getElementById('product-modal').classList.add('hidden');
-});
+    currentProduct = null;
+}
 
-// Quantity controls
-document.getElementById('qty-minus').addEventListener('click', () => {
-    const input = document.getElementById('qty-input');
-    const value = parseInt(input.value);
-    if (value > 1) {
-        input.value = value - 1;
-    }
-});
-
-document.getElementById('qty-plus').addEventListener('click', () => {
-    const input = document.getElementById('qty-input');
-    const value = parseInt(input.value);
-    input.value = value + 1;
-});
-
-// Add to cart from modal
-document.getElementById('modal-add-to-cart').addEventListener('click', () => {
-    if (!selectedProduct) return;
+function addToCartFromModal() {
+    if (!currentProduct) return;
     
-    const qty = parseInt(document.getElementById('qty-input').value);
-    const existingItem = cart.find(item => item.id === selectedProduct.id);
+    let quantity = parseInt(document.getElementById('qty-input').value, 10);
+	if (isNaN(quantity) || quantity < 1) quantity = 1;
+
+    addToCart(currentProduct, quantity);
+    closeModal();
+}
+
+// Cart
+function addToCart(product, quantity = 1) {
+    // Определяем категорию товара по ID
+    function getProductCategory(productId) {
+        if (productId >= 10000 && productId < 20000) return 'cleaning';
+        if (productId >= 20000 && productId < 30000) return 'plasticpe';
+        if (productId >= 30000 && productId < 40000) return 'plasticpet';
+        if (productId >= 40000 && productId < 50000) return 'plasticpp';
+        if (productId >= 50000 && productId < 60000) return 'plastictd';
+        if (productId >= 60000 && productId < 70000) return 'chemicals';
+        if (productId >= 70000 && productId < 80000) return 'fragrances';
+        return 'unknown';
+    }
+    
+    // Получаем категорию добавляемого товара
+    const newProductCategory = getProductCategory(product.id);
+    
+    // ПРОВЕРКА НА СМЕШИВАНИЕ КАТЕГОРИЙ УБРАНА - теперь можно добавлять товары из любых категорий
+    
+    const existingItem = cart.find(item => item.id === product.id);
     
     if (existingItem) {
-        existingItem.quantity += qty;
+        existingItem.quantity += quantity;
     } else {
-		const img = selectedProduct.images?.[0] || selectedProduct.image || '';
         cart.push({
-            ...selectedProduct,
-			image: img,
-            quantity: qty
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: quantity,
+            image: (product.images && product.images[0]) || product.image,
+            category: newProductCategory
         });
     }
     
     saveCart();
     updateCartBadge();
-    document.getElementById('product-modal').classList.add('hidden');
     
     // Show feedback
-    tg.HapticFeedback.notificationOccurred('success');
-});
-
-// Save cart
-function saveCart() {
-    localStorage.setItem('cart', JSON.stringify(cart));
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Добавлено';
+    btn.style.background = '#ff0000';
+    btn.style.color = 'white';
+    setTimeout(() => {
+        btn.textContent = originalText
+	btn.style.background = '';
+	btn.style.color = '';;
+    }, 1000);
 }
 
-// Update cart badge
-function updateCartBadge() {
-    const badge = document.getElementById('cart-badge');
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.id !== productId);
+    saveCart();
+    updateCartBadge();
+    renderCart();
+}
+
+function updateCartQuantity(productId, change) {
+    const item = cart.find(item => item.id === productId);
+    if (!item) return;
     
-    if (totalItems > 0) {
-        badge.textContent = totalItems;
-        badge.classList.remove('hidden');
+    item.quantity += change;
+    
+    if (item.quantity <= 0) {
+        removeFromCart(productId);
     } else {
-        badge.classList.add('hidden');
+        saveCart();
+        renderCart();
     }
 }
 
-// Navigation
-document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const page = btn.dataset.page;
-        switchPage(page);
-    });
-});
-
-function switchPage(page) {
-    currentPage = page;
-    
-    // Update nav buttons
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.page === page);
-    });
-    
-    // Update pages
-    document.querySelectorAll('.page').forEach(p => {
-        p.classList.toggle('active', p.id === `${page}-page`);
-    });
-    
-    // Load page content
-    if (page === 'favorites') {
-        loadFavorites();
-    } else if (page === 'cart') {
-        loadCart();
-    } else if (page === 'profile') {
-        loadProfile();
-    }
-}
-
-// Load favorites
-function loadFavorites() {
-    const grid = document.getElementById('favorites-grid');
-    grid.innerHTML = '';
-    
-    if (favorites.length === 0) {
-        grid.innerHTML = '<div class="empty-state"><p>У вас пока нет избранных товаров</p></div>';
-        return;
-    }
-    
-    favorites.forEach(product => {
-        const card = createProductCard(product);
-        grid.appendChild(card);
-    });
-}
-
-// Load cart
-function loadCart() {
+function renderCart() {
     const container = document.getElementById('cart-items');
     const summary = document.getElementById('cart-summary');
     
@@ -567,18 +416,32 @@ function loadCart() {
         const cartItem = document.createElement('div');
         cartItem.className = 'cart-item';
         cartItem.innerHTML = `
-            <img src="${item.image}" alt="${item.name}" class="cart-item-image" onerror="this.src='https://via.placeholder.com/80?text=No+Image'">
+            <img src="${item.image}" alt="${item.name}" class="cart-item-image">
             <div class="cart-item-info">
                 <div class="cart-item-name">${item.name}</div>
                 <div class="cart-item-price">${formatPrice(item.price)}</div>
                 <div class="cart-item-controls">
-                    <button class="cart-qty-btn" onclick="updateCartQty(${item.id}, -1)">-</button>
+                    <button class="cart-qty-btn" data-id="${item.id}" data-change="-1">-</button>
                     <span class="cart-qty">${item.quantity}</span>
-                    <button class="cart-qty-btn" onclick="updateCartQty(${item.id}, 1)">+</button>
-                    <button class="cart-item-remove" onclick="removeFromCart(${item.id})">Удалить</button>
+                    <button class="cart-qty-btn" data-id="${item.id}" data-change="1">+</button>
+                    <button class="cart-item-remove" data-id="${item.id}">Удалить</button>
                 </div>
             </div>
         `;
+        
+        cartItem.querySelectorAll('.cart-qty-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = parseInt(btn.dataset.id);
+                const change = parseInt(btn.dataset.change);
+                updateCartQuantity(id, change);
+            });
+        });
+        
+        cartItem.querySelector('.cart-item-remove').addEventListener('click', () => {
+            const id = parseInt(cartItem.querySelector('.cart-item-remove').dataset.id);
+            removeFromCart(id);
+        });
+        
         container.appendChild(cartItem);
     });
     
@@ -587,34 +450,86 @@ function loadCart() {
     summary.classList.remove('hidden');
 }
 
-// Update cart quantity
-function updateCartQty(productId, change) {
-    const item = cart.find(i => i.id === productId);
-    if (!item) return;
+function saveCart() {
+    localStorage.setItem('cart', JSON.stringify(cart));
+}
+
+function updateCartBadge() {
+    const badge = document.getElementById('cart-badge');
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
     
-    item.quantity += change;
+    badge.textContent = count;
     
-    if (item.quantity <= 0) {
-        cart = cart.filter(i => i.id !== productId);
+    if (count > 0) {
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+// Favorites
+function toggleFavorite(productId) {
+    const index = favorites.indexOf(productId);
+    
+    if (index > -1) {
+        favorites.splice(index, 1);
+    } else {
+        favorites.push(productId);
     }
     
-    saveCart();
-    updateCartBadge();
-    loadCart();
+    saveFavorites();
+    
+    // Update UI
+    if (document.getElementById('catalog-page').classList.contains('active')) {
+        loadProducts();
+    } else if (document.getElementById('favorites-page').classList.contains('active')) {
+        loadFavorites();
+    }
 }
 
-// Remove from cart
-function removeFromCart(productId) {
-    cart = cart.filter(i => i.id !== productId);
-    saveCart();
-    updateCartBadge();
-    loadCart();
+function loadFavorites() {
+    const grid = document.getElementById('favorites-grid');
+    
+    if (favorites.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><p>У вас пока нет избранных товаров</p></div>';
+        return;
+    }
+    
+    grid.innerHTML = '';
+    
+    favorites.forEach(id => {
+        const product = allProducts.find(p => p.id === id);
+        if (product) {
+            const card = createProductCard(product);
+            grid.appendChild(card);
+        }
+    });
 }
 
-// Load profile
-function loadProfile() {
-    const orders = JSON.parse(localStorage.getItem('orders')) || [];
+function saveFavorites() {
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+}
+
+// Profile
+function loadUserProfile() {
+    const user = tg.initDataUnsafe?.user;
+    
+    if (user) {
+        document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+        document.getElementById('user-phone').textContent = user.username ? '@' + user.username : 'Не указан';
+        document.getElementById('user-city').textContent = 'Ташкент'; // Default or from backend
+    } else {
+        document.getElementById('user-name').textContent = 'Гость';
+        document.getElementById('user-phone').textContent = 'Не указан';
+        document.getElementById('user-city').textContent = 'Не указан';
+    }
+}
+
+function loadUserOrders() {
     const ordersList = document.getElementById('orders-list');
+    
+    // Mock orders - в реальности данные будут приходить с бэкенда
+    const orders = JSON.parse(localStorage.getItem('orders')) || [];
     
     if (orders.length === 0) {
         ordersList.innerHTML = '<p class="empty-state">У вас пока нет заказов</p>';
@@ -622,62 +537,25 @@ function loadProfile() {
     }
     
     ordersList.innerHTML = '';
-    orders.slice(0, 5).forEach(order => {
-        const orderItem = document.createElement('div');
-        orderItem.className = 'order-item';
-        orderItem.innerHTML = `
+    
+    orders.forEach(order => {
+        const orderEl = document.createElement('div');
+        orderEl.className = 'order-item';
+        orderEl.innerHTML = `
             <div class="order-id">Заказ #${order.id}</div>
-            <div class="order-date">${order.date} - ${order.items} товаров - ${formatPrice(order.total)}</div>
+            <div class="order-date">${order.date} • ${formatPrice(order.total)}</div>
         `;
-        ordersList.appendChild(orderItem);
+        ordersList.appendChild(orderEl);
     });
 }
 
-// Categories
-document.querySelectorAll('.category-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        currentCategory = btn.dataset.category;
-        
-        document.querySelectorAll('.category-btn').forEach(b => {
-            b.classList.remove('active');
-        });
-        btn.classList.add('active');
-        
-        loadProducts();
-    });
-});
-
-// Search
-document.getElementById('search-input').addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    const grid = document.getElementById('products-grid');
-    
-    let products = [];
-    if (currentCategory === 'all') {
-        products = Object.values(productsData).flat();
-    } else {
-        products = productsData[currentCategory] || [];
-    }
-    
-    const filtered = products.filter(p => 
-        p.name.toLowerCase().includes(searchTerm) ||
-        p.description.toLowerCase().includes(searchTerm)
-    );
-    
-    grid.innerHTML = '';
-    filtered.forEach(product => {
-        const card = createProductCard(product);
-        grid.appendChild(card);
-    });
-});
-
 // Checkout
-document.getElementById('checkout-btn').addEventListener('click', () => {
+function checkout() {
     if (cart.length === 0) return;
     
     // Show confirmation dialog
     showConfirmationDialog();
-});
+}
 
 function showConfirmationDialog() {
     const modal = document.getElementById('confirmation-modal');
@@ -702,8 +580,7 @@ function confirmCheckout() {
             image: item.image  // ДОБАВЛЕНО: Включаем URL изображения в данные заказа
         })),
         total: total,
-        user_id: tg.initDataUnsafe?.user?.id || 0,
-        dealer_info: dealerInfo  // Добавляем информацию о диллере
+        user_id: tg.initDataUnsafe?.user?.id || 0
     };
     
     // Send data back to bot
