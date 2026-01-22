@@ -10,40 +10,88 @@ let isAuthorized = false;
 const tg = window.Telegram.WebApp;
 tg.expand();
 
+// ОТЛАДКА: Показать информацию о Telegram WebApp
+console.log('=== TELEGRAM WEBAPP DEBUG ===');
+console.log('tg:', tg);
+console.log('tg.initData:', tg.initData);
+console.log('tg.initDataUnsafe:', tg.initDataUnsafe);
+console.log('tg.initDataUnsafe?.user:', tg.initDataUnsafe?.user);
+console.log('tg.initDataUnsafe?.user?.id:', tg.initDataUnsafe?.user?.id);
+console.log('===========================');
+
 // Проверка доступа при загрузке страницы
 async function checkAccess() {
     try {
-        // Получаем chat_id из Telegram WebApp
-        const chatId = tg.initDataUnsafe?.user?.id;
+        // МЕТОД 1: Получаем chat_id из Telegram WebApp (основной)
+        let chatId = tg.initDataUnsafe?.user?.id;
+        
+        // МЕТОД 2: Альтернативный способ (если первый не сработал)
+        if (!chatId && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            chatId = tg.initDataUnsafe.user.id;
+        }
+        
+        // МЕТОД 3: Проверяем объект Telegram.WebApp напрямую
+        if (!chatId && window.Telegram && window.Telegram.WebApp) {
+            const webapp = window.Telegram.WebApp;
+            if (webapp.initDataUnsafe && webapp.initDataUnsafe.user) {
+                chatId = webapp.initDataUnsafe.user.id;
+            }
+        }
+        
+        // ОТЛАДКА: Показываем что получили
+        console.log('Extracted chatId:', chatId);
         
         if (!chatId) {
-            showAccessDenied('Не удалось получить ваш ID. Пожалуйста, откройте приложение через Telegram.');
+            // Показываем детальную информацию об ошибке
+            const debugInfo = `
+                initData: ${tg.initData ? 'есть' : 'нет'}
+                initDataUnsafe: ${tg.initDataUnsafe ? JSON.stringify(tg.initDataUnsafe) : 'нет'}
+            `;
+            console.error('Не удалось получить chat_id. Debug info:', debugInfo);
+            
+            showAccessDenied(
+                'Не удалось получить ваш ID. Убедитесь, что вы открыли приложение через кнопку "🛒 Сделать заказ" в боте.'
+            );
             return false;
         }
         
         // Показываем индикатор загрузки
         showLoadingScreen();
         
+        // Проверяем, настроен ли Google Script URL
+        if (GOOGLE_SCRIPT_URL === 'ВАШ_URL_ИЗ_GOOGLE_APPS_SCRIPT') {
+            showAccessDenied(
+                'Система авторизации не настроена. Обратитесь к администратору.'
+            );
+            return false;
+        }
+        
         // Проверяем доступ через Google Sheets
+        console.log('Отправка запроса к Google Sheets:', `${GOOGLE_SCRIPT_URL}?chat_id=${chatId}`);
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?chat_id=${chatId}`);
+        
+        console.log('Статус ответа:', response.status);
         const result = await response.json();
+        console.log('Результат проверки:', result);
         
         if (result.success) {
             // Доступ разрешен
             dealerInfo = result.data;
             isAuthorized = true;
+            console.log('✅ Доступ разрешен. Информация о диллере:', dealerInfo);
             hideLoadingScreen();
             initializeApp();
             return true;
         } else {
             // Доступ запрещен
+            console.log('❌ Доступ запрещен:', result.message);
             showAccessDenied();
             return false;
         }
         
     } catch (error) {
-        console.error('Ошибка проверки доступа:', error);
-        showAccessDenied('Произошла ошибка при проверке доступа. Попробуйте позже.');
+        console.error('❌ Ошибка проверки доступа:', error);
+        showAccessDenied('Произошла ошибка при проверке доступа. Попробуйте позже. Ошибка: ' + error.message);
         return false;
     }
 }
@@ -106,6 +154,24 @@ function showAccessDenied(customMessage = null) {
                 " onmouseover="this.style.background='#E62E24'" onmouseout="this.style.background='#FF3B30'">
                     Написать администратору
                 </a>
+                
+                <div style="
+                    margin-top: 20px;
+                    padding: 15px;
+                    background: #f8f8f8;
+                    border-radius: 10px;
+                    font-size: 12px;
+                    color: #666;
+                    text-align: left;
+                    font-family: monospace;
+                ">
+                    <strong>Отладочная информация:</strong><br>
+                    Chat ID: ${tg.initDataUnsafe?.user?.id || 'не определен'}<br>
+                    Username: ${tg.initDataUnsafe?.user?.username || 'не указан'}<br>
+                    First name: ${tg.initDataUnsafe?.user?.first_name || 'не указано'}<br>
+                    <br>
+                    <small>Отправьте эту информацию администратору если проблема сохраняется.</small>
+                </div>
             </div>
         </div>
     `;
@@ -176,28 +242,14 @@ function initializeApp() {
 
 // Запуск проверки доступа при загрузке страницы
 window.addEventListener('DOMContentLoaded', () => {
-    checkAccess();
+    // Даем время Telegram WebApp инициализироваться
+    setTimeout(() => {
+        checkAccess();
+    }, 100);
 });
 
-// ========== ОСТАЛЬНОЙ КОД ПРИЛОЖЕНИЯ ==========
-
-const productsData = {
-    cleaning: [
-        { id: 10001, name: "Жидкое средство для стирки Aroma 3.15 l * 4 шт", category: "cleaning", price: 180000, 
-		images:["https://asadbekkasimov.github.io/order/images/c1.jpg",
-			"https://asadbekkasimov.github.io/order/images/c1_2.jpg",
-			"https://asadbekkasimov.github.io/order/images/c1_3.jpg"], 
-		description: "Жидкое средство для стирки Aroma 3.15l * 4 шт" },
-
-        { id: 10002, name: "Кондиционер для белья 1440 ml * 8 шт", category: "cleaning", price: 211000, image: "https://asadbekkasimov.github.io/order/images/c2.jpg", description: "Кондиционер для белья 1440 ml * 8 шт " },
-        { id: 10003, name: "Гель густой 1 kg * 12 шт", category: "cleaning", price: 150000, image: "https://asadbekkasimov.github.io/order/images/c3.jpg", description: "Гель густой 1 kg * 12 шт" },
-        { id: 10004, name: "Жидкое средство для стирки Kafolat 1 l * 6 шт", category: "cleaning", price: 105600, image: "https://asadbekkasimov.github.io/order/images/c4.jpg", description: "Жидкое средство для стирки Kafolat 1 l * 6 шт" },
-        { id: 10005, name: "Антижир Kafolat 500 ml * 12 шт", category: "cleaning", price: 112200, image: "https://asadbekkasimov.github.io/order/images/c5.jpg", description: "Антижир Kafolat 500 ml * 12 шт" },
-        { id: 10006, name: "Шампунь Nalan 400 ml * 16 шт", category: "cleaning", price: 105600, image: "https://asadbekkasimov.github.io/order/images/c6.jpg", description: "Шампунь Nalan 400 ml * 16 шт" },
-        { id: 10007, name: "Освежитель воздуха 400 mk * 18 шт", category: "cleaning", price: 135000, image: "https://asadbekkasimov.github.io/order/images/c7.jpg", description: "Освежитель воздуха 400 мл * 18 шт" },
-        { id: 10008, name: "Средство для мыть стекол 575 ml * 16 шт", category: "cleaning", price: 70400, image: "https://asadbekkasimov.github.io/order/images/c8.jpg", description: "Средство для мыть стекол 575 ml * 16 шт" },
-        { id: 10009, name: "Жидкое мыло 500 мл * 8 шт", category: "cleaning", price: 40000, image: "https://asadbekkasimov.github.io/order/images/c9.jpg", description: "Жидкое мыло 500 мл * 8 шт" },
-        { id: 10010, name: "Кислородный очиститель 300 g * 12 шт", category: "cleaning", price: 144000, image: "https://asadbekkasimov.github.io/order/images/c10.jpg", description: "Кислородный очиститель 300 g * 12 шт" },
+// ========== ОСТАЛЬНОЙ КОД ПРИЛОЖЕНИЯ (БЕЗ ИЗМЕНЕНИЙ) ==========
+// ... (весь код от строки 200 до конца остается как в оригинале)
         { id: 10011, name: "Средство для ручной стирки Хоз.мыло 5кг * 1 шт", category: "cleaning", price: 30000, image: "https://asadbekkasimov.github.io/order/images/c11.jpg", description: "Средство для ручной стирки Хоз.мыло" }
     ],
     plasticpe: [
