@@ -92,7 +92,7 @@ function showAccessDenied(customMessage = null) {
                     ${customMessage || 'У вас нет доступа к каталогу. Для получения доступа свяжитесь с администратором.'}
                 </p>
                 
-                <a href="https://t.me/asadbek_kasim0v" style="
+                <a href="https://t.me/khaja_01" style="
                     display: inline-block;
                     background: #FF3B30;
                     color: white;
