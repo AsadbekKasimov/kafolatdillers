@@ -1,6 +1,6 @@
 // ========== КОНФИГУРАЦИЯ ==========
 // ВАЖНО: Замените этот URL на ваш URL из Google Apps Script
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxdq1V7ao-ajKUsydeOPLMhbWjNfzRnz6Pblgjo_eTrmpAtzD4vrYYPFNtBUFFTU7wG/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZzxeatuuDw4eiT5BFyH2VP35U-rIbqdTw3vDvBmcy8tujjVGmnmYuLLiKaGNnDchw/exec';
 
 // ========== ПРОВЕРКА ДОСТУПА ==========
 let dealerInfo = null;
