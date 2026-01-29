@@ -771,3 +771,13 @@ body {
 /* === Telegram iOS keyboard fix === */
 
 
+/* === Telegram modal scroll fix === */
+body.modal-open {
+    overflow: hidden;
+}
+
+.modal-content {
+    max-height: calc(var(--tg-viewport-height, 100vh) - 20px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
