@@ -526,9 +526,9 @@ body {
 .modal-content {
     background: var(--bg-white);
     border-radius: 20px 20px 0 0;
-    padding: 20px;
+    padding-bottom: 24px;;
     width: 100%;
-    max-height: 80vh;
+    max-height: calc(var(--tg-viewport-height, 100vh) - 20px);
     overflow-y: auto;
     animation: slideUp 0.3s ease;
 }
