@@ -144,7 +144,32 @@ function setupEventListeners() {
 
     // Modal
     document.getElementById('modal-close').addEventListener('click', closeModal);
-    document.getElementById('product-modal').addEventListener('click', (e) => {
+    
+    // Закрытие модалки только при клике на фон (не при скролле)
+    let modalTouchStart = null;
+    const modal = document.getElementById('product-modal');
+    
+    modal.addEventListener('touchstart', (e) => {
+        if (e.target.id === 'product-modal') {
+            modalTouchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+    });
+    
+    modal.addEventListener('touchend', (e) => {
+        if (e.target.id === 'product-modal' && modalTouchStart) {
+            const deltaX = Math.abs(e.changedTouches[0].clientX - modalTouchStart.x);
+            const deltaY = Math.abs(e.changedTouches[0].clientY - modalTouchStart.y);
+            
+            // Закрыть только если это был клик (не скролл)
+            if (deltaX < 10 && deltaY < 10) {
+                closeModal();
+            }
+        }
+        modalTouchStart = null;
+    });
+    
+    // Для мыши (десктоп)
+    modal.addEventListener('click', (e) => {
         if (e.target.id === 'product-modal') closeModal();
     });
 
@@ -561,6 +586,34 @@ function checkout() {
 function showConfirmationDialog() {
     const modal = document.getElementById('confirmation-modal');
     modal.classList.remove('hidden');
+    
+    // Предотвратить закрытие при случайном скролле
+    setTimeout(() => {
+        const confirmModal = document.getElementById('confirmation-modal');
+        let confirmTouchStart = null;
+        
+        const handleTouchStart = (e) => {
+            if (e.target.id === 'confirmation-modal') {
+                confirmTouchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        };
+        
+        const handleTouchEnd = (e) => {
+            if (e.target.id === 'confirmation-modal' && confirmTouchStart) {
+                const deltaX = Math.abs(e.changedTouches[0].clientX - confirmTouchStart.x);
+                const deltaY = Math.abs(e.changedTouches[0].clientY - confirmTouchStart.y);
+                
+                // Закрыть только если это был клик (не скролл)
+                if (deltaX < 10 && deltaY < 10) {
+                    closeConfirmationDialog();
+                }
+            }
+            confirmTouchStart = null;
+        };
+        
+        confirmModal.addEventListener('touchstart', handleTouchStart);
+        confirmModal.addEventListener('touchend', handleTouchEnd);
+    }, 100);
 }
 
 function closeConfirmationDialog() {
