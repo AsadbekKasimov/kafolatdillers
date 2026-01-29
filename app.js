@@ -2,20 +2,11 @@
 const tg = window.Telegram.WebApp;
 tg.expand();
 
-function setViewportHeight() {
-    document.documentElement.style.setProperty(
-        '--tg-viewport-height',
-        `${tg.viewportHeight}px`
-    );
-}
-
-setViewportHeight();
-tg.onEvent('viewportChanged', setViewportHeight);
 
 
 const productsData = {
     cleaning: [
-        { id: 10001, name: "Жидкое средство для стирки Aroma 3.15 l * 4 шт", category: "cleaning", price: 180000, 
+        { id: 10001, name: "Жидкое средство для стирки Aroma 3.15 l * 4 шт", category: "cleaning", price: 180000,
 	images:["https://asadbekkasimov.github.io/order/images/c1.jpg",
 		"https://asadbekkasimov.github.io/order/images/c1_2.jpg",
 		"https://asadbekkasimov.github.io/order/images/c1_3.jpg"], 
@@ -651,15 +642,4 @@ document.addEventListener('click', e => {
     const img = e.target.closest('.zoomable');
     if (!img) return;
     img.classList.toggle('zoomed');
-});
-
-document.addEventListener('focusin', e => {
-    if (e.target.tagName !== 'INPUT') return;
-
-    setTimeout(() => {
-        e.target.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-        });
-    }, 300);
 });
