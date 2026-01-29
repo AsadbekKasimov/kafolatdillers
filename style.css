@@ -323,8 +323,8 @@ body {
 }
 
 .cart-qty-btn {
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background: var(--bg-white);
@@ -526,9 +526,9 @@ body {
 .modal-content {
     background: var(--bg-white);
     border-radius: 20px 20px 0 0;
-    padding-bottom: 24px;;
+    padding: 20px;
     width: 100%;
-    max-height: calc(var(--tg-viewport-height, 100vh) - 20px);
+    max-height: 80vh;
     overflow-y: auto;
     animation: slideUp 0.3s ease;
 }
@@ -767,17 +767,4 @@ body {
 
 .confirm-btn:active {
     background: var(--primary-hover);
-}
-/* === Telegram iOS keyboard fix === */
-
-
-/* === Telegram modal scroll fix === */
-body.modal-open {
-    overflow: hidden;
-}
-
-.modal-content {
-    max-height: calc(var(--tg-viewport-height, 100vh) - 20px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
