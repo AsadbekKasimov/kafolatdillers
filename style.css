@@ -769,12 +769,5 @@ body {
     background: var(--primary-hover);
 }
 /* === Telegram iOS keyboard fix === */
-html, body {
-    height: 100%;
-    overflow: hidden;
-}
 
-.main-content {
-    min-height: var(--tg-viewport-height, 100vh);
-}
 
