@@ -323,7 +323,7 @@ body {
 }
 
 .cart-qty-btn {
-    width: 90px;
+    width: 40px;
     height: 40px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
