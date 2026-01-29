@@ -69,17 +69,21 @@ body {
     left: 0;
     right: 0;
     bottom: 70px;
-    overflow-y: auto;
+    overflow-y: scroll;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    /* Важно: всегда должна быть возможность скролла */
+    min-height: 100%;
 }
 
 .page {
     display: none;
     padding: 15px;
     animation: fadeIn 0.3s ease;
-    min-height: 100%;
+    /* КРИТИЧНО: всегда больше высоты контейнера */
+    min-height: calc(100% + 1px);
+    padding-bottom: 40px;
 }
 
 .page.active {
@@ -533,6 +537,8 @@ body {
     align-items: flex-end;
     z-index: 1000;
     animation: fadeIn 0.2s ease;
+    /* Предотвратить закрытие при клике на фон */
+    overflow: hidden;
 }
 
 .modal.hidden {
@@ -545,9 +551,12 @@ body {
     padding: 20px;
     width: 100%;
     max-height: 80vh;
-    overflow-y: auto;
+    overflow-y: scroll;
     animation: slideUp 0.3s ease;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    /* КРИТИЧНО: всегда иметь возможность скролла */
+    position: relative;
 }
 
 @keyframes slideUp {
@@ -577,6 +586,9 @@ body {
 
 .modal-body {
     padding-top: 20px;
+    /* КРИТИЧНО: добавить padding снизу для возможности скролла */
+    padding-bottom: 40px;
+    min-height: 400px;
 }
 
 .modal-product-image {
@@ -656,6 +668,8 @@ body {
     text-align: center;
     padding: 40px 20px;
     color: var(--text-gray);
+    /* КРИТИЧНО: минимальная высота для возможности скролла */
+    min-height: 300px;
 }
 
 /* Utilities */
