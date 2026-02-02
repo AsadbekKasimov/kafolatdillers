@@ -786,17 +786,22 @@ function confirmCheckout() {
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
     // Prepare order data - ИЗМЕНЕНО: Теперь включаем URL изображения
-    const orderData = {
-        items: cart.map(item => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            qty: item.quantity,
-            image: item.image  // ДОБАВЛЕНО: Включаем URL изображения в данные заказа
-        })),
-        total: total,
-        user_id: tg.initDataUnsafe?.user?.id || 0
-    };
+   function confirmCheckout() {
+  const compactItems = cart.map(item => ({
+    id: item.id,
+    qty: item.quantity
+  }));
+
+  const payload = {
+    items: compactItems,
+    total: getCartTotal()
+  };
+
+  console.log("SEND SIZE:", JSON.stringify(payload).length);
+
+  Telegram.WebApp.sendData(JSON.stringify(payload));
+}
+
     
     // Send data back to bot
     tg.sendData(JSON.stringify(orderData));
