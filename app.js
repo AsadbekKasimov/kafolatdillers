@@ -776,17 +776,12 @@ function showConfirmationDialog() {
         confirmModal.addEventListener('touchend', handleTouchEnd);
     }, 100);
 }
-
 function closeConfirmationDialog() {
-    const modal = document.getElementById('confirmation-modal');
-    modal.classList.add('hidden');
+  const modal = document.getElementById('confirmation-modal');
+  modal.classList.add('hidden');
 }
 
 function confirmCheckout() {
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    
-    // Prepare order data - ИЗМЕНЕНО: Теперь включаем URL изображения
-   function confirmCheckout() {
   const compactItems = cart.map(item => ({
     id: item.id,
     qty: item.quantity
@@ -794,37 +789,31 @@ function confirmCheckout() {
 
   const payload = {
     items: compactItems,
-    total: getCartTotal()
+    total: cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   };
 
   console.log("SEND SIZE:", JSON.stringify(payload).length);
 
   Telegram.WebApp.sendData(JSON.stringify(payload));
-}
 
-    
-    // Send data back to bot
-    tg.sendData(JSON.stringify(orderData));
-    
-    // Save order to localStorage for history
-    const orders = JSON.parse(localStorage.getItem('orders')) || [];
-    orders.unshift({
-        id: Date.now(),
-        date: new Date().toLocaleDateString('ru-RU'),
-        total: total,
-        items: cart.length
-    });
-    localStorage.setItem('orders', JSON.stringify(orders));
-    
-    // Clear cart
-    cart = [];
-    saveCart();
-    updateCartBadge();
-    
-    // Close confirmation dialog
-    closeConfirmationDialog();
-    
-    tg.close();
+  // Сохраняем заказ локально (НЕ отправляем боту второй раз!)
+  const orders = JSON.parse(localStorage.getItem('orders')) || [];
+  orders.unshift({
+    id: Date.now(),
+    date: new Date().toLocaleDateString('ru-RU'),
+    total: payload.total,
+    items: cart.length
+  });
+  localStorage.setItem('orders', JSON.stringify(orders));
+
+  // Очищаем корзину
+  cart = [];
+  saveCart();
+  updateCartBadge();
+
+  // Закрываем модалку и WebApp
+  closeConfirmationDialog();
+  Telegram.WebApp.close();
 }
 
 // Utils
